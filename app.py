@@ -509,5 +509,40 @@ def api_delete_book():
 
     return jsonify({"success": True, "message": "图书删除成功"}), 200
 
+@app.route('/api/edit_book', methods=['PUT'])
+def api_edit_book():
+    if 'admin_logged_in' not in session:
+        return jsonify({"success": False, "message": "未登录管理员账号"}), 401
+
+    data = request.json
+    book_id = data.get('book_id')
+    title = data.get('title')
+    quantity = data.get('quantity')
+
+    if not all([book_id, title, quantity]):
+        return jsonify({"success": False, "message": "缺少必要的字段"}), 400
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            UPDATE books
+            SET title = %s, quantity = %s
+            WHERE id = %s
+            """,
+            (title, quantity, book_id)
+        )
+        connection.commit()
+    except Exception as e:
+        connection.rollback()
+        return jsonify({"success": False, "message": f"更新失败: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+    return jsonify({"success": True, "message": "图书信息更新成功"}), 200
+
 if __name__ == '__main__':
     app.run(debug=True)

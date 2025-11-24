@@ -85,23 +85,21 @@
                                     <h5 class="modal-title" id="editBookModalLabel{{ book.id }}">修改图书信息</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
-                                <form action="/admin/edit_book" method="post">
-                                    <div class="modal-body">
-                                        <input type="hidden" name="book_id" value="{{ book.id }}">
-                                        <div class="mb-3">
-                                            <label for="title{{ book.id }}" class="form-label">书名</label>
-                                            <input type="text" class="form-control" id="title{{ book.id }}" name="title" value="{{ book.title }}" required>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="quantity{{ book.id }}" class="form-label">库存</label>
-                                            <input type="number" class="form-control" id="quantity{{ book.id }}" name="quantity" value="{{ book.quantity }}" required>
-                                        </div>
+                                <div class="modal-body">
+                                    <input type="hidden" name="book_id" value="{{ book.id }}">
+                                    <div class="mb-3">
+                                        <label for="title{{ book.id }}" class="form-label">书名</label>
+                                        <input type="text" class="form-control" id="title{{ book.id }}" name="title" value="{{ book.title }}" required>
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                                        <button type="submit" class="btn btn-primary">保存修改</button>
+                                    <div class="mb-3">
+                                        <label for="quantity{{ book.id }}" class="form-label">库存</label>
+                                        <input type="number" class="form-control" id="quantity{{ book.id }}" name="quantity" value="{{ book.quantity }}" required>
                                     </div>
-                                </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                    <button type="button" class="btn btn-primary" onclick="editBook('{{ book.id }}')">保存修改</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -158,6 +156,37 @@
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ book_id: bookId })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                location.reload();
+            } else {
+                alert(result.message);
+            }
+        }
+
+        async function editBook(bookId) {
+            const title = document.getElementById(`title${bookId}`).value;
+            const quantity = document.getElementById(`quantity${bookId}`).value;
+
+            if (!title || !quantity) {
+                alert('书名和库存不能为空！');
+                return;
+            }
+
+            const response = await fetch('/api/edit_book', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    book_id: bookId,
+                    title: title,
+                    quantity: quantity
+                })
             });
 
             const result = await response.json();
