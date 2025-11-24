@@ -5,5 +5,5 @@ class Config:
     # MySQL Database Configuration
     MYSQL_HOST = 'localhost'
     MYSQL_USER = 'root'
-    MYSQL_PASSWORD = 'Lcm20050322'
+    MYSQL_PASSWORD = 'your_password'
     MYSQL_DB = 'book'
