@@ -38,7 +38,3 @@ INSERT INTO users (username, password_hash) VALUES
 INSERT INTO admins (username, password_hash) VALUES
     ('admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9');
 -- admin admin123
-
--- 插入图书的占位语句
-INSERT INTO books (title, image_filename, quantity) VALUES
-    ('123', '123.jpg', 10);

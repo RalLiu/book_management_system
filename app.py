@@ -310,8 +310,8 @@ def add_book():
     image = request.files.get('image')
 
     if image:
-        # Save the image to the static folder with the book title as the filename
-        image_filename = f"{title}.jpg"
+        # Save the image to the static folder with its original filename
+        image_filename = image.filename
         image.save(os.path.join('static', image_filename))
     else:
         image_filename = None
@@ -343,6 +343,12 @@ def manage_books():
 
     cursor.close()
     connection.close()
+
+    for book in books:
+        if book['image_filename']:
+            book['image_url'] = url_for('static', filename=book['image_filename'])
+        else:
+            book['image_url'] = None
 
     return render_template('manage_books.html', books=books)
 
@@ -509,15 +515,15 @@ def api_delete_book():
 
     return jsonify({"success": True, "message": "图书删除成功"}), 200
 
-@app.route('/api/edit_book', methods=['PUT'])
+@app.route('/api/edit_book', methods=['POST'])
 def api_edit_book():
     if 'admin_logged_in' not in session:
         return jsonify({"success": False, "message": "未登录管理员账号"}), 401
 
-    data = request.json
-    book_id = data.get('book_id')
-    title = data.get('title')
-    quantity = data.get('quantity')
+    book_id = request.form.get('book_id')
+    title = request.form.get('title')
+    quantity = request.form.get('quantity')
+    image = request.files.get('image')
 
     if not all([book_id, title, quantity]):
         return jsonify({"success": False, "message": "缺少必要的字段"}), 400
@@ -526,6 +532,7 @@ def api_edit_book():
     cursor = connection.cursor()
 
     try:
+        # Update book details
         cursor.execute(
             """
             UPDATE books
@@ -534,6 +541,20 @@ def api_edit_book():
             """,
             (title, quantity, book_id)
         )
+
+        # Update image if provided
+        if image:
+            image_filename = image.filename
+            image.save(os.path.join('static', image_filename))
+            cursor.execute(
+                """
+                UPDATE books
+                SET image_filename = %s
+                WHERE id = %s
+                """,
+                (image_filename, book_id)
+            )
+
         connection.commit()
     except Exception as e:
         connection.rollback()

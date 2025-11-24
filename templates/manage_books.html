@@ -65,8 +65,8 @@
                         <td>{{ book.title }}</td>
                         <td>{{ book.quantity }}</td>
                         <td>
-                            {% if book.image_filename %}
-                                <img src="/static/{{ book.image_filename }}" alt="{{ book.title }}" style="width: 50px; height: auto;">
+                            {% if book.image_url %}
+                                <img src="{{ book.image_url }}" alt="{{ book.title }}" style="width: 50px; height: auto;">
                             {% else %}
                                 无图片
                             {% endif %}
@@ -94,6 +94,10 @@
                                     <div class="mb-3">
                                         <label for="quantity{{ book.id }}" class="form-label">库存</label>
                                         <input type="number" class="form-control" id="quantity{{ book.id }}" name="quantity" value="{{ book.quantity }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="image{{ book.id }}" class="form-label">更新图片</label>
+                                        <input type="file" class="form-control" id="image{{ book.id }}" name="image" accept="image/*">
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -171,22 +175,25 @@
         async function editBook(bookId) {
             const title = document.getElementById(`title${bookId}`).value;
             const quantity = document.getElementById(`quantity${bookId}`).value;
+            const imageInput = document.getElementById(`image${bookId}`);
+            const formData = new FormData();
 
             if (!title || !quantity) {
                 alert('书名和库存不能为空！');
                 return;
             }
 
+            formData.append('book_id', bookId);
+            formData.append('title', title);
+            formData.append('quantity', quantity);
+
+            if (imageInput.files.length > 0) {
+                formData.append('image', imageInput.files[0]);
+            }
+
             const response = await fetch('/api/edit_book', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    book_id: bookId,
-                    title: title,
-                    quantity: quantity
-                })
+                method: 'POST',
+                body: formData
             });
 
             const result = await response.json();
