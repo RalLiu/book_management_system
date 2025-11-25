@@ -1,47 +1,290 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>图书借阅</title>
+    <title>图书管理系统 - 图书借阅</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        .card {
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
+        :root {
+            --primary: #28a745;
+            --secondary: #20c997;
+            --accent: #fd7e14;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --gradient-primary: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            --gradient-secondary: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
         }
-        .card:hover {
-            transform: scale(1.05);
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fdf9;
+            color: #333;
+            line-height: 1.6;
         }
-        .card-img-top {
-            height: 200px;
-            object-fit: cover;
+        
+        .navbar {
+            background: var(--gradient-primary) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 0.8rem 0;
         }
-        .card-title {
-            font-size: 1.2rem;
-            font-weight: bold;
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white !important;
+            display: flex;
+            align-items: center;
         }
-        .card-body {
-            padding: 1rem;
+        
+        .navbar-brand::before {
+            content: "📚";
+            margin-right: 8px;
+            font-size: 1.8rem;
         }
-        .btn-primary {
-            background-color: #007bff;
+        
+        .navbar-nav .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            margin: 0 0.2rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-nav .nav-link:hover, 
+        .navbar-nav .nav-link.active {
+            color: white !important;
+            background-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .container {
+            max-width: 1400px;
+        }
+        
+        .page-header {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            padding: 2rem;
+            margin-top: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: var(--gradient-primary);
+        }
+        
+        .page-header h1 {
+            color: var(--primary);
+            font-weight: 700;
+            margin: 0;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .page-header h1::before {
+            content: "📖";
+            margin-right: 12px;
+            font-size: 2.2rem;
+        }
+        
+        .books-container {
+            margin-top: 2rem;
+        }
+        
+        .book-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 100%;
             border: none;
+            position: relative;
         }
-        .btn-primary:hover {
-            background-color: #0056b3;
+        
+        .book-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .book-image {
+            height: 250px;
+            object-fit: cover;
+            width: 100%;
+        }
+        
+        .book-placeholder {
+            height: 250px;
+            background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-size: 4rem;
+        }
+        
+        .book-body {
+            padding: 1.5rem;
+        }
+        
+        .book-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 1rem;
+            line-height: 1.4;
+            height: 2.8rem;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        
+        .book-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .book-quantity {
+            font-size: 0.9rem;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+        }
+        
+        .book-quantity::before {
+            content: "📚";
+            margin-right: 5px;
+        }
+        
+        .btn-borrow {
+            background: var(--gradient-secondary);
+            border: none;
+            color: white;
+            font-weight: 500;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .btn-borrow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(253, 126, 20, 0.4);
+            color: white;
+        }
+        
+        .btn-borrow:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .quantity-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .quantity-high {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: var(--success);
+        }
+        
+        .quantity-low {
+            background-color: rgba(255, 193, 7, 0.1);
+            color: #d39e00;
+        }
+        
+        .quantity-none {
+            background-color: rgba(220, 53, 69, 0.1);
+            color: var(--danger);
+        }
+        
+        .footer {
+            margin-top: 4rem;
+            padding: 1.5rem 0;
+            text-align: center;
+            color: #777;
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+        }
+        
+        .navbar-toggler {
+            border: none;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .navbar-toggler:focus {
+            box-shadow: none;
+        }
+        
+        .navbar-toggler-icon {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6c757d;
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 768px) {
+            .page-header {
+                padding: 1.5rem 1rem;
+            }
+            
+            .page-header h1 {
+                font-size: 1.75rem;
+            }
+            
+            .book-image {
+                height: 200px;
+            }
+            
+            .book-placeholder {
+                height: 200px;
+            }
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <div class="container-fluid">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
             <a class="navbar-brand" href="#">图书管理系统</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
+                <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="/user">用户首页</a>
                     </li>
@@ -59,28 +302,61 @@
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <h1 class="mb-4 text-center">图书借阅</h1>
-        <div class="row row-cols-1 row-cols-md-4 g-4">
-            {% for book in books %}
-            <div class="col">
-                <div class="card h-100">
-                    <img src="/static/{{ book.image_filename }}" class="card-img-top" alt="{{ book.title }}">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">{{ book.title }}</h5>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">剩余: {{ book.quantity }} 本</span>
-                            <form action="/user/borrow" method="post" class="d-inline">
+    <div class="container">
+        <div class="page-header">
+            <h1>图书借阅</h1>
+        </div>
+
+        <div class="books-container">
+            {% if books %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                {% for book in books %}
+                <div class="col">
+                    <div class="book-card">
+                        {% if book.image_filename %}
+                        <img src="/static/{{ book.image_filename }}" class="book-image" alt="{{ book.title }}">
+                        {% else %}
+                        <div class="book-placeholder">📚</div>
+                        {% endif %}
+                        <div class="book-body">
+                            <h5 class="book-title">{{ book.title }}</h5>
+                            <div class="book-info">
+                                <div class="book-quantity">
+                                    <span class="quantity-badge {% if book.quantity > 5 %}quantity-high{% elif book.quantity > 0 %}quantity-low{% else %}quantity-none{% endif %}">
+                                        剩余 {{ book.quantity }} 本
+                                    </span>
+                                </div>
+                            </div>
+                            <form action="/user/borrow" method="post">
                                 <input type="hidden" name="book_id" value="{{ book.id }}">
-                                <button type="submit" class="btn btn-primary btn-sm">借阅</button>
+                                <button type="submit" class="btn-borrow" {% if book.quantity == 0 %}disabled{% endif %}>
+                                    {% if book.quantity > 0 %}
+                                    立即借阅
+                                    {% else %}
+                                    暂无库存
+                                    {% endif %}
+                                </button>
                             </form>
                         </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📚</div>
+                <h3>暂无图书可借阅</h3>
+                <p>当前没有可借阅的图书，请稍后再来查看</p>
+            </div>
+            {% endif %}
         </div>
     </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>图书管理系统 &copy; 2023 - 图书借阅</p>
+        </div>
+    </footer>
 
     <form id="logoutForm" action="/logout" method="post" style="display: none;"></form>
 
