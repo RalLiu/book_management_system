@@ -41,19 +41,42 @@ def user_login():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    cursor.execute("SELECT * FROM users WHERE username = %s AND password_hash = %s", (username, hashed_password))
+    # Check if the username exists
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
     user = cursor.fetchone()
 
-    cursor.close()
-    connection.close()
-
     if user:
+        # If user exists, check the password
+        if user['password_hash'] == hashed_password:
+            session['user_logged_in'] = True
+            session['username'] = username  # Store username in session
+            session['user_id'] = user['id']  # Store user ID in session
+            cursor.close()
+            connection.close()
+            return jsonify({"success": True, "redirect": url_for('user_dashboard')}), 200
+        else:
+            cursor.close()
+            connection.close()
+            return jsonify({"success": False, "message": "密码错误"}), 401
+    else:
+        # If user does not exist, create a new account
+        cursor.execute(
+            "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
+            (username, hashed_password)
+        )
+        connection.commit()
+
+        # Retrieve the new user's ID
+        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        new_user = cursor.fetchone()
+
         session['user_logged_in'] = True
         session['username'] = username  # Store username in session
-        session['user_id'] = user['id']  # Store user ID in session
-        return jsonify({"success": True, "redirect": url_for('user_dashboard')}), 200
-    else:
-        return jsonify({"success": False, "message": "用户名或密码错误"}), 401
+        session['user_id'] = new_user['id']  # Store user ID in session
+
+        cursor.close()
+        connection.close()
+        return jsonify({"success": True, "redirect": url_for('user_dashboard')}), 201
 
 @app.route('/api/admin_login', methods=['POST'])
 def admin_login():
