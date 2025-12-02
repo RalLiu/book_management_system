@@ -588,5 +588,37 @@ def api_edit_book():
 
     return jsonify({"success": True, "message": "图书信息更新成功"}), 200
 
+@app.route('/admin/filter_book', methods = ['POST'])
+def admin_filter_book():
+    if 'admin_logged_in' not in session:
+        return jsonify({"success": False, "message": "未登录管理员账号"}), 401
+    title = request.form.get('title', '')
+    quantity = request.form.get('quantity', 0)
+    try:
+        quantity = int(quantity)
+    except(ValueError, TypeError):
+        quantity = 0
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)  # 使用dictionary=True返回字典格式
+
+    sql_query = """
+        select * from books where title like %s and quantity >= %s
+    """
+
+    like_pattern = f"%{title}%"
+    cursor.execute(sql_query, (like_pattern, quantity))
+    books = cursor.fetchall()
+
+    cursor.close()
+    connection.close()
+
+    for book in books:
+        # 确保image_url字段存在
+        if 'image_url' not in book:
+            book['image_url'] = ''
+
+    return jsonify({"success": True, "books": books})
+
 if __name__ == '__main__':
     app.run(debug=True)
