@@ -510,14 +510,15 @@ def api_delete_user():
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Delete the user
-    cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-    connection.commit()
-
-    cursor.close()
-    connection.close()
-
-    return jsonify({"success": True, "message": "用户删除成功"}), 200
+    try:
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        connection.commit()
+        return jsonify({"success": True, "message": "用户删除成功"}), 200
+    except mysql.connector.errors.DatabaseError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+    finally:
+        cursor.close()
+        connection.close()
 
 @app.route('/api/delete_book', methods=['DELETE'])
 def api_delete_book():
@@ -529,14 +530,15 @@ def api_delete_book():
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    # Delete the book
-    cursor.execute("DELETE FROM books WHERE id = %s", (book_id,))
-    connection.commit()
-
-    cursor.close()
-    connection.close()
-
-    return jsonify({"success": True, "message": "图书删除成功"}), 200
+    try:
+        cursor.execute("DELETE FROM books WHERE id = %s", (book_id,))
+        connection.commit()
+        return jsonify({"success": True, "message": "图书删除成功"}), 200
+    except mysql.connector.errors.DatabaseError as e:
+        return jsonify({"success": False, "message": str(e)}), 400
+    finally:
+        cursor.close()
+        connection.close()
 
 @app.route('/api/edit_book', methods=['POST'])
 def api_edit_book():
