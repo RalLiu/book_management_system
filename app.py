@@ -616,9 +616,10 @@ def admin_filter_book():
     connection.close()
 
     for book in books:
-        # 确保image_url字段存在
-        if 'image_url' not in book:
-            book['image_url'] = ''
+        if book.get('image_filename'):
+            book['image_url'] = url_for('static', filename=book['image_filename'])
+        else:
+            book['image_url'] = None
 
     return jsonify({"success": True, "books": books})
 
