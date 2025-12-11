@@ -22,6 +22,13 @@ def get_db_connection():
 
 @app.before_request
 def check_login():
+    # 如果访问首页且已登录，自动跳转到对应主页
+    if request.endpoint == 'home':
+        if 'user_logged_in' in session:
+            return redirect(url_for('user_dashboard'))
+        elif 'admin_logged_in' in session:
+            return redirect(url_for('admin_dashboard'))
+    # 其他页面权限校验
     if request.endpoint not in ['home', 'user_login', 'admin_login', 'static']:
         if 'user_logged_in' not in session and 'admin_logged_in' not in session:
             return redirect(url_for('home'))
@@ -125,13 +132,7 @@ def borrow_books():
     cursor = connection.cursor(dictionary=True)
 
     query = """
-        SELECT b.id, b.title, b.image_filename, b.quantity
-        FROM books b
-        WHERE b.quantity > 0
-        AND NOT EXISTS (
-            SELECT 1 FROM borrow_records br
-            WHERE br.book_id = b.id AND br.user_id = %s
-        )
+        SELECT * FROM available_books_per_user_view WHERE user_id = %s
     """
     cursor.execute(query, (user_id,))
     books = cursor.fetchall()
@@ -152,10 +153,7 @@ def my_books():
     cursor = connection.cursor(dictionary=True)
 
     query = """
-        SELECT b.id, b.title, b.image_filename
-        FROM books b
-        JOIN borrow_records br ON b.id = br.book_id
-        WHERE br.user_id = %s
+        SELECT * FROM user_borrowed_books_view WHERE user_id = %s
     """
     cursor.execute(query, (user_id,))
     books = cursor.fetchall()
@@ -385,10 +383,7 @@ def manage_borrow_records():
 
     # Fetch borrow records
     query = """
-        SELECT br.id, u.username AS user_name, b.title AS book_title
-        FROM borrow_records br
-        JOIN users u ON br.user_id = u.id
-        JOIN books b ON br.book_id = b.id
+        SELECT * FROM borrow_record_view
     """
     cursor.execute(query)
     borrow_records = cursor.fetchall()

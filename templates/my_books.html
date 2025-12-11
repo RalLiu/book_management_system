@@ -355,7 +355,7 @@
                             
                             <!-- 归还按钮表单 -->
                             <form action="/user/return" method="post" class="return-form">
-                                <input type="hidden" name="book_id" value="{{ book.id|default('') }}">
+                                <input type="hidden" name="book_id" value="{{ book.book_id|default('') }}">
                                 <button type="submit" class="btn-return" onclick="return confirmReturn()">
                                     <span>↩️</span> 归还图书
                                 </button>

@@ -328,7 +328,7 @@
                                 </div>
                             </div>
                             <form action="/user/borrow" method="post">
-                                <input type="hidden" name="book_id" value="{{ book.id }}">
+                                <input type="hidden" name="book_id" value="{{ book.book_id }}">
                                 <button type="submit" class="btn-borrow" {% if book.quantity == 0 %}disabled{% endif %}>
                                     {% if book.quantity > 0 %}
                                     立即借阅
