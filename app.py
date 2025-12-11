@@ -182,16 +182,8 @@ def borrow_book():
     book = cursor.fetchone()
 
     if book and book['quantity'] > 0:
-        # Create a borrow record
-        cursor.execute(
-            "INSERT INTO borrow_records (user_id, book_id) VALUES (%s, %s)",
-            (user_id, book_id)
-        )
-        # Decrease the quantity of the book
-        cursor.execute(
-            "UPDATE books SET quantity = quantity - 1 WHERE id = %s",
-            (book_id,)
-        )
+        # 调用存储过程实现借书原子操作
+        cursor.execute("CALL borrow_book(%s, %s)", (user_id, book_id))
         connection.commit()
 
     cursor.close()
@@ -210,16 +202,8 @@ def return_book():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)  # Ensure cursor returns dictionaries
 
-    # Delete the borrow record
-    cursor.execute(
-        "DELETE FROM borrow_records WHERE user_id = %s AND book_id = %s",
-        (user_id, book_id)
-    )
-    # Increase the quantity of the book
-    cursor.execute(
-        "UPDATE books SET quantity = quantity + 1 WHERE id = %s",
-        (book_id,)
-    )
+    # 直接调用还书存储过程（无需查找借阅记录ID）
+    cursor.execute("CALL return_book(%s, %s)", (user_id, book_id))
     connection.commit()
 
     cursor.close()

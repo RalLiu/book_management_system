@@ -27,6 +27,38 @@ def initialize_database():
                 if stmt and not stmt.lower().startswith('create trigger') and not stmt.lower().startswith('drop trigger'):
                     cursor.execute(stmt)
 
+
+
+            # 创建存储过程：借书
+            cursor.execute("DROP PROCEDURE IF EXISTS borrow_book")
+            create_proc_borrow = '''
+            CREATE PROCEDURE borrow_book(IN p_user_id INT, IN p_book_id INT)
+            BEGIN
+                DECLARE book_qty INT;
+                SELECT quantity INTO book_qty FROM books WHERE id = p_book_id;
+                IF book_qty > 0 THEN
+                    INSERT INTO borrow_records (user_id, book_id) VALUES (p_user_id, p_book_id);
+                    UPDATE books SET quantity = quantity - 1 WHERE id = p_book_id;
+                END IF;
+            END
+            '''
+            cursor.execute(create_proc_borrow)
+
+            # 创建存储过程：还书
+            cursor.execute("DROP PROCEDURE IF EXISTS return_book")
+            create_proc_return = '''
+            CREATE PROCEDURE return_book(IN p_user_id INT, IN p_book_id INT)
+            BEGIN
+                DECLARE borrow_id INT;
+                SELECT id INTO borrow_id FROM borrow_records WHERE user_id = p_user_id AND book_id = p_book_id LIMIT 1;
+                IF borrow_id IS NOT NULL THEN
+                    UPDATE books SET quantity = quantity + 1 WHERE id = p_book_id;
+                    DELETE FROM borrow_records WHERE id = borrow_id;
+                END IF;
+            END
+            '''
+            cursor.execute(create_proc_return)
+
             # 单独执行触发器
             # 触发器 1
             cursor.execute("DROP TRIGGER IF EXISTS prevent_book_deletion")
