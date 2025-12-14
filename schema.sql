@@ -48,6 +48,7 @@ SELECT
 FROM borrow_records br
 JOIN users u ON br.user_id = u.id
 JOIN books b ON br.book_id = b.id;
+--- 用户借阅记录的视图
 
 CREATE OR REPLACE VIEW user_borrowed_books_view AS
 SELECT
@@ -59,6 +60,7 @@ SELECT
 FROM users u
 JOIN borrow_records br ON u.id = br.user_id
 JOIN books b ON br.book_id = b.id;
+--- 用户已借阅的书籍视图
 
 CREATE OR REPLACE VIEW available_books_per_user_view AS
 SELECT
@@ -74,6 +76,7 @@ WHERE b.quantity > 0
       SELECT 1 FROM borrow_records br
       WHERE br.book_id = b.id AND br.user_id = u.id
   );
+-- 用户可借阅的书籍视图
 
 -- 插入用户的占位语句
 INSERT INTO users (username, password_hash) VALUES

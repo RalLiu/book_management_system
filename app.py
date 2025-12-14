@@ -2,14 +2,13 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from hash_util import generate_hash
 import mysql.connector
 from config import Config
-import os  # Import os module for file path operations
+import os
 
 app = Flask(__name__)
 
-# Apply configuration from config.py
+# 获取 config.py 中的参数
 app.config.from_object(Config)
 
-# Enable session management
 app.secret_key = Config.SECRET_KEY
 
 def get_db_connection():
@@ -48,16 +47,16 @@ def user_login():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # Check if the username exists
+    # 检查用户是否存在
     cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
     user = cursor.fetchone()
 
     if user:
-        # If user exists, check the password
+        # 检查密码
         if user['password_hash'] == hashed_password:
             session['user_logged_in'] = True
-            session['username'] = username  # Store username in session
-            session['user_id'] = user['id']  # Store user ID in session
+            session['username'] = username
+            session['user_id'] = user['id']
             cursor.close()
             connection.close()
             return jsonify({"success": True, "redirect": url_for('user_dashboard')}), 200
@@ -66,20 +65,20 @@ def user_login():
             connection.close()
             return jsonify({"success": False, "message": "密码错误"}), 401
     else:
-        # If user does not exist, create a new account
+        # 若不存在 创建新用户
         cursor.execute(
             "INSERT INTO users (username, password_hash) VALUES (%s, %s)",
             (username, hashed_password)
         )
         connection.commit()
 
-        # Retrieve the new user's ID
+        # 再次查询以获取新用户的ID
         cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
         new_user = cursor.fetchone()
 
         session['user_logged_in'] = True
-        session['username'] = username  # Store username in session
-        session['user_id'] = new_user['id']  # Store user ID in session
+        session['username'] = username
+        session['user_id'] = new_user['id']
 
         cursor.close()
         connection.close()
@@ -170,14 +169,14 @@ def borrow_book():
 
     user_id = session.get('user_id')
     if not user_id:
-        return redirect(url_for('home'))  # Redirect if user_id is missing
+        return redirect(url_for('home'))
 
     book_id = request.form.get('book_id')
 
     connection = get_db_connection()
-    cursor = connection.cursor(dictionary=True)  # Ensure cursor returns dictionaries
+    cursor = connection.cursor(dictionary=True)
 
-    # Check if the book is available
+    # 查询书籍库存是否大于0
     cursor.execute("SELECT quantity FROM books WHERE id = %s", (book_id,))
     book = cursor.fetchone()
 
@@ -200,9 +199,9 @@ def return_book():
     book_id = request.form.get('book_id')
 
     connection = get_db_connection()
-    cursor = connection.cursor(dictionary=True)  # Ensure cursor returns dictionaries
+    cursor = connection.cursor(dictionary=True)
 
-    # 直接调用还书存储过程（无需查找借阅记录ID）
+    # 直接调用还书存储过程
     cursor.execute("CALL return_book(%s, %s)", (user_id, book_id))
     connection.commit()
 
@@ -315,7 +314,7 @@ def add_book():
     image = request.files.get('image')
 
     if image:
-        # Save the image to the static folder with its original filename
+        # 保存图片到 static 文件夹，使用原始文件名
         image_filename = image.filename
         image.save(os.path.join('static', image_filename))
     else:
@@ -365,18 +364,18 @@ def manage_borrow_records():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # Fetch borrow records
+    #查询所有借阅记录
     query = """
         SELECT * FROM borrow_record_view
     """
     cursor.execute(query)
     borrow_records = cursor.fetchall()
 
-    # Fetch users for dropdown
+    #查询所有用户用于选择
     cursor.execute("SELECT id, username FROM users")
     users = cursor.fetchall()
 
-    # Fetch books for dropdown
+    #查询所有书籍用于选择
     cursor.execute("SELECT id, title FROM books")
     books = cursor.fetchall()
 
@@ -396,14 +395,14 @@ def add_borrow_record():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # Check if the record already exists
+    # 检查借阅记录是否已存在
     cursor.execute(
         "SELECT COUNT(*) AS count FROM borrow_records WHERE user_id = %s AND book_id = %s",
         (user_id, book_id)
     )
     record_exists = cursor.fetchone()['count'] > 0
 
-    # Check if the book quantity is greater than 0
+    # 查询书籍库存是否大于0
     cursor.execute(
         "SELECT quantity FROM books WHERE id = %s",
         (book_id,)
@@ -424,17 +423,7 @@ def add_borrow_record():
         connection.close()
         return jsonify({"success": False, "message": "书籍库存不足，无法添加借阅记录！"}), 400
 
-    # Add borrow record
-    cursor.execute(
-        "INSERT INTO borrow_records (user_id, book_id) VALUES (%s, %s)",
-        (user_id, book_id)
-    )
-
-    # Decrease book quantity
-    cursor.execute(
-        "UPDATE books SET quantity = quantity - 1 WHERE id = %s",
-        (book_id,)
-    )
+    cursor.execute("CALL borrow_book(%s, %s)", (user_id, book_id))
 
     connection.commit()
 
@@ -451,27 +440,23 @@ def delete_borrow_record():
     borrow_record_id = request.form.get('borrow_record_id')
 
     connection = get_db_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
-    # Get book_id from the borrow record
+    # 获取book_id和user_id
     cursor.execute(
-        "SELECT book_id FROM borrow_records WHERE id = %s",
+        "SELECT book_id, user_id FROM borrow_records WHERE id = %s",
         (borrow_record_id,)
     )
-    book_id = cursor.fetchone()[0]  # Access the first element of the tuple
+    record = cursor.fetchone()
+    if not record:
+        cursor.close()
+        connection.close()
+        return redirect(url_for('manage_borrow_records'))
+    book_id = record['book_id']
+    user_id = record['user_id']
 
-    # Delete the borrow record
-    cursor.execute(
-        "DELETE FROM borrow_records WHERE id = %s",
-        (borrow_record_id,)
-    )
-
-    # Increase book quantity
-    cursor.execute(
-        "UPDATE books SET quantity = quantity + 1 WHERE id = %s",
-        (book_id,)
-    )
-
+    # 调用还书存储过程（原子操作：还书+删除记录+加库存）
+    cursor.execute("CALL return_book(%s, %s)", (user_id, book_id))
     connection.commit()
 
     cursor.close()
@@ -536,7 +521,7 @@ def api_edit_book():
     cursor = connection.cursor()
 
     try:
-        # Update book details
+        # 更新书籍信息
         cursor.execute(
             """
             UPDATE books
@@ -546,7 +531,7 @@ def api_edit_book():
             (title, quantity, book_id)
         )
 
-        # Update image if provided
+        # 更新图片（如果提供）
         if image:
             image_filename = image.filename
             image.save(os.path.join('static', image_filename))
@@ -581,7 +566,7 @@ def admin_filter_book():
         quantity = 0
 
     connection = get_db_connection()
-    cursor = connection.cursor(dictionary=True)  # 使用dictionary=True返回字典格式
+    cursor = connection.cursor(dictionary=True)
 
     sql_query = """
         select * from books where title like %s and quantity >= %s
