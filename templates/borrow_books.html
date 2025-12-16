@@ -361,5 +361,35 @@
     <form id="logoutForm" action="/logout" method="post" style="display: none;"></form>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const borrowForms = document.querySelectorAll('form[action="/user/borrow"]');
+
+            borrowForms.forEach(form => {
+                form.addEventListener('submit', async function (event) {
+                    event.preventDefault();
+
+                    const formData = new FormData(form);
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success) {
+                            alert('借书成功！');
+                            location.reload();
+                        } else {
+                            alert(result.message || '借书失败，请稍后再试。');
+                            location.reload();
+                        }
+                    } else {
+                        alert('服务器错误，请稍后再试。');
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

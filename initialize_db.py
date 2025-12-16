@@ -25,7 +25,10 @@ def initialize_database():
             for statement in statements:
                 stmt = statement.strip()
                 if stmt and not stmt.lower().startswith('create trigger') and not stmt.lower().startswith('drop trigger'):
-                    cursor.execute(stmt)
+                    try:
+                        cursor.execute(stmt)
+                    except Error as err:
+                        print(f"Warning executing statement: {err}")
 
 
 
@@ -34,11 +37,22 @@ def initialize_database():
             create_proc_borrow = '''
             CREATE PROCEDURE borrow_book(IN p_user_id INT, IN p_book_id INT)
             BEGIN
-                DECLARE book_qty INT;
-                SELECT quantity INTO book_qty FROM books WHERE id = p_book_id;
-                IF book_qty > 0 THEN
-                    INSERT INTO borrow_records (user_id, book_id) VALUES (p_user_id, p_book_id);
-                    UPDATE books SET quantity = quantity - 1 WHERE id = p_book_id;
+                DECLARE rows_affected INT;
+                DECLARE has_borrowed INT DEFAULT 0;
+
+                SELECT COUNT(*) INTO has_borrowed FROM borrow_records WHERE user_id = p_user_id AND book_id = p_book_id;
+
+                IF has_borrowed > 0 THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '您已借阅过该书，不能重复借阅';
+                ELSE
+                    UPDATE books SET quantity = quantity - 1 WHERE id = p_book_id AND quantity > 0;
+                    SELECT ROW_COUNT() INTO rows_affected;
+                    
+                    IF rows_affected > 0 THEN
+                        INSERT INTO borrow_records (user_id, book_id) VALUES (p_user_id, p_book_id);
+                    ELSE
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = '图书库存不足，无法借阅';
+                    END IF;
                 END IF;
             END
             '''

@@ -165,30 +165,27 @@ def my_books():
 @app.route('/user/borrow', methods=['POST'])
 def borrow_book():
     if 'user_logged_in' not in session:
-        return redirect(url_for('home'))
+        return jsonify({'success': False, 'message': '请先登录'}), 401
 
     user_id = session.get('user_id')
     if not user_id:
-        return redirect(url_for('home'))
+        return jsonify({'success': False, 'message': '用户未登录'}), 401
 
     book_id = request.form.get('book_id')
 
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # 查询书籍库存是否大于0
-    cursor.execute("SELECT quantity FROM books WHERE id = %s", (book_id,))
-    book = cursor.fetchone()
-
-    if book and book['quantity'] > 0:
+    try:
         # 调用存储过程实现借书原子操作
         cursor.execute("CALL borrow_book(%s, %s)", (user_id, book_id))
         connection.commit()
-
-    cursor.close()
-    connection.close()
-
-    return redirect(url_for('borrow_books'))
+        return jsonify({'success': True, 'message': '借书成功'})
+    except mysql.connector.Error as err:
+        return jsonify({'success': False, 'message': str(err)})
+    finally:
+        cursor.close()
+        connection.close()
 
 @app.route('/user/return', methods=['POST'])
 def return_book():
