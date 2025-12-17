@@ -3,6 +3,8 @@ from hash_util import generate_hash
 import mysql.connector
 from config import Config
 import os
+import subprocess
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -10,6 +12,80 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 app.secret_key = Config.SECRET_KEY
+
+def backup_database():
+    """备份数据库到 backup 文件夹"""
+    try:
+        # 确保备份目录存在
+        backup_dir = os.path.join(app.root_path, 'backup')
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+
+        # 生成备份文件名
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"backup_{timestamp}.sql"
+        filepath = os.path.join(backup_dir, filename)
+
+        # 获取数据库配置
+        host = app.config['MYSQL_HOST']
+        user = app.config['MYSQL_USER']
+        password = app.config['MYSQL_PASSWORD']
+        db_name = app.config['MYSQL_DB']
+
+        # 构建 mysqldump 命令
+        # 注意：mysqldump 需要在系统环境变量中，或者指定完整路径
+        command = [
+            'mysqldump',
+            f'-h{host}',
+            f'-u{user}',
+            f'-p{password}',
+            '--routines', # 导出存储过程和函数
+            '--events',   # 导出定时事件
+            db_name
+        ]
+
+        # 执行备份
+        with open(filepath, 'w') as f:
+            subprocess.run(command, stdout=f, check=True)
+        
+        print(f"Database backup successful: {filepath}")
+    except Exception as e:
+        print(f"Database backup failed: {str(e)}")
+
+def restore_database(filename):
+    """从 backup 文件夹中的 sql 文件还原数据库"""
+    try:
+        backup_dir = os.path.join(app.root_path, 'backup')
+        filepath = os.path.join(backup_dir, filename)
+        
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Backup file not found: {filename}")
+
+        # 获取数据库配置
+        host = app.config['MYSQL_HOST']
+        user = app.config['MYSQL_USER']
+        password = app.config['MYSQL_PASSWORD']
+        db_name = app.config['MYSQL_DB']
+
+        # 构建 mysql 还原命令
+        # 注意：mysql 客户端需要在系统环境变量中
+        command = [
+            'mysql',
+            f'-h{host}',
+            f'-u{user}',
+            f'-p{password}',
+            db_name
+        ]
+
+        # 执行还原
+        with open(filepath, 'r') as f:
+            subprocess.run(command, stdin=f, check=True)
+            
+        print(f"Database restore successful: {filepath}")
+        return True, "数据库还原成功"
+    except Exception as e:
+        print(f"Database restore failed: {str(e)}")
+        return False, str(e)
 
 def get_db_connection():
     return mysql.connector.connect(
@@ -82,6 +158,10 @@ def user_login():
 
         cursor.close()
         connection.close()
+        
+        # 触发备份
+        backup_database()
+        
         return jsonify({"success": True, "redirect": url_for('user_dashboard')}), 201
 
 @app.route('/api/admin_login', methods=['POST'])
@@ -101,6 +181,8 @@ def admin_login():
     cursor.close()
     connection.close()
 
+    backup_database()
+
     if admin:
         session['admin_logged_in'] = True
         return jsonify({"success": True, "redirect": url_for('admin_dashboard')}), 200
@@ -118,7 +200,34 @@ def user_dashboard():
 def admin_dashboard():
     if 'admin_logged_in' not in session:
         return redirect(url_for('home'))
-    return render_template('admin.html')
+    
+    # 获取备份文件列表
+    backup_dir = os.path.join(app.root_path, 'backup')
+    backup_files = []
+    if os.path.exists(backup_dir):
+        files = os.listdir(backup_dir)
+        # 过滤出 .sql 文件并按修改时间倒序排列
+        sql_files = [f for f in files if f.endswith('.sql')]
+        sql_files.sort(key=lambda x: os.path.getmtime(os.path.join(backup_dir, x)), reverse=True)
+        backup_files = sql_files
+        
+    return render_template('admin.html', backup_files=backup_files)
+
+@app.route('/admin/restore', methods=['POST'])
+def admin_restore():
+    if 'admin_logged_in' not in session:
+        return jsonify({"success": False, "message": "未登录管理员账号"}), 401
+        
+    filename = request.json.get('filename')
+    if not filename:
+        return jsonify({"success": False, "message": "未选择备份文件"}), 400
+        
+    success, message = restore_database(filename)
+    
+    if success:
+        return jsonify({"success": True, "message": message}), 200
+    else:
+        return jsonify({"success": False, "message": f"还原失败: {message}"}), 500
 
 @app.route('/user/borrow_books')
 def borrow_books():
@@ -180,6 +289,10 @@ def borrow_book():
         # 调用存储过程实现借书原子操作
         cursor.execute("CALL borrow_book(%s, %s)", (user_id, book_id))
         connection.commit()
+        
+        # 触发备份
+        backup_database()
+        
         return jsonify({'success': True, 'message': '借书成功'})
     except mysql.connector.Error as err:
         return jsonify({'success': False, 'message': str(err)})
@@ -204,6 +317,9 @@ def return_book():
 
     cursor.close()
     connection.close()
+
+    # 触发备份
+    backup_database()
 
     return redirect(url_for('my_books'))
 
@@ -250,6 +366,9 @@ def add_user():
     cursor.close()
     connection.close()
 
+    # 触发备份
+    backup_database()
+
     return redirect(url_for('manage_users'))
 
 @app.route('/admin/edit_user', methods=['POST'])
@@ -281,6 +400,9 @@ def edit_user():
     cursor.close()
     connection.close()
 
+    # 触发备份
+    backup_database()
+
     return redirect(url_for('manage_users'))
 
 @app.route('/admin/delete_user', methods=['POST'])
@@ -298,6 +420,9 @@ def delete_user():
 
     cursor.close()
     connection.close()
+
+    # 触发备份
+    backup_database()
 
     return redirect(url_for('manage_users'))
 
@@ -328,6 +453,9 @@ def add_book():
 
     cursor.close()
     connection.close()
+
+    # 触发备份
+    backup_database()
 
     return redirect(url_for('manage_books'))
 
@@ -427,6 +555,9 @@ def add_borrow_record():
     cursor.close()
     connection.close()
 
+    # 触发备份
+    backup_database()
+
     return jsonify({"success": True, "message": "借阅记录添加成功！"}), 200
 
 @app.route('/admin/delete_borrow_record', methods=['POST'])
@@ -459,6 +590,9 @@ def delete_borrow_record():
     cursor.close()
     connection.close()
 
+    # 触发备份
+    backup_database()
+
     return redirect(url_for('manage_borrow_records'))
 
 @app.route('/api/delete_user', methods=['DELETE'])
@@ -474,6 +608,10 @@ def api_delete_user():
     try:
         cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
         connection.commit()
+        
+        # 触发备份
+        backup_database()
+        
         return jsonify({"success": True, "message": "用户删除成功"}), 200
     except mysql.connector.errors.DatabaseError as e:
         return jsonify({"success": False, "message": str(e)}), 400
@@ -494,6 +632,10 @@ def api_delete_book():
     try:
         cursor.execute("DELETE FROM books WHERE id = %s", (book_id,))
         connection.commit()
+        
+        # 触发备份
+        backup_database()
+        
         return jsonify({"success": True, "message": "图书删除成功"}), 200
     except mysql.connector.errors.DatabaseError as e:
         return jsonify({"success": False, "message": str(e)}), 400
@@ -542,6 +684,10 @@ def api_edit_book():
             )
 
         connection.commit()
+        
+        # 触发备份
+        backup_database()
+        
     except Exception as e:
         connection.rollback()
         return jsonify({"success": False, "message": f"更新失败: {str(e)}"}), 500
